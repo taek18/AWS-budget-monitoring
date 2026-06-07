@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "$0")/00-env.sh"
 
-source 00-env.sh
+if [ -f "${PROJECT_ROOT}/state/env.txt" ]; then
+    echo " ! state/env.txt already exists - a deployment may already be active"
+    echo " ! Run cleanup.sh first or check status with tests/status.sh"
+    read -rp "Continue anyway? (y/N): " CONFIRM
+    if [ "$CONFIRM" != "y" ]; then
+        echo "Aborting"
+        exit 0
+    fi
+fi
+
 ./scripts/01-create-sns.sh
 ./scripts/02-subscribe-sns.sh
 ./scripts/03-budget-config.sh
