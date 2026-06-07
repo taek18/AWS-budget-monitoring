@@ -12,16 +12,19 @@ graph TB
         BILLING[AWS Billing Data]
         BUDGET[AWS Budgets]
     end
+
+      subgraph "Monitoring & Alerts"
+        THRESHOLD1[80% Threshold Alert]
+        THRESHOLD2[100% Threshold Alert]
+        THRESHOLD3[80% Forecast Alert]
+    end
     
     subgraph "Notification Layer"
         SNS[Amazon SNS Topic]
         EMAIL[Email Notifications]
-    end
-    
-    subgraph "Monitoring & Alerts"
-        THRESHOLD1[80% Threshold Alert]
-        THRESHOLD2[100% Threshold Alert]
-        THRESHOLD3[80% Forecast Alert]
+        LAMBDA[AWS Lambda]
+        SSM[SSM Parameter Store]
+        SLACK[Slack Notification]
     end
     
     BILLING-->BUDGET
@@ -32,16 +35,24 @@ graph TB
     THRESHOLD2-->SNS
     THRESHOLD3-->SNS
     SNS-->EMAIL
+    SNS-->LAMBDA
+    SSM-->LAMBDA
+    LAMBDA-->SLACK
     
     style BUDGET fill:#FF9900
     style SNS fill:#FF4B4B
+    style LAMBDA fill:#FF9900
+    style SSM fill:#2196F3
     style EMAIL fill:#4CAF50
+    style SLACK fill:#4CAF50
 ```
 
 ## Prerequisites
 - AWS CLI installed and configured (`aws configure`)
-- An AWS Account with permissions for Budgets, SNS, and Secrets Manager
+- An AWS account with permissions for Budgets, SNS, Lambda, IAM, SSM, and Secrets Manager
+- Python 3.12
 - bash (GNU/Linux environment – `date` commands require GNU coreutils)
+- A Slack workspace with an incoming webhook URL
 
 ## Steps
 Run scripts in order or use `build.sh` to run all steps automatically.
@@ -50,25 +61,42 @@ Run scripts in order or use `build.sh` to run all steps automatically.
 
 2. `01-create-sns.sh` — Create SNS Topic.
 
-3. `02-subscribe-sns.sh` — Subscribe to SNS Topic with email provided in `00-env.sh`.
+3. `02-subscribe-sns.sh` — Subscribe to SNS Topic with email provided in `00-env.sh` and wait for confirmation.
 
-4. `03-budget-config.sh` — Configure Budget's limit, type, time unit, time period and cost types. 
+4. `03-budget-config.sh` — Configure Budget limit, type, time unit, time period and cost types.
 
 5. `04-notif-config.sh` — Configure notifications for surpassing and forecasted thresholds.
 
 6. `05-build-budget.sh` — Create Budget.
 
-7. `06-verify-budget.sh` — Verify Budget's configuration.
+7. `06-verify-budget.sh` — Verify Budget configuration.
+
+8. `07-ssm-webhook.sh` — Store Slack webhook URL in SSM Parameter Store.
+
+9. `08-create-iam.sh` — Create IAM role and policy for Lambda.
+
+10. `09-create-lambda.sh` — Package and deploy Lambda function.
+
+11. `10-update-sns.sh` — Subscribe Lambda to SNS Topic.
 
 ## Testing
+Run `tests/status.sh` at any time to check for active or leftover resources without affecting the current deployment.
 
 1. `email-status.sh` — Verify email subscription status.
 
 2. `test-sns.sh` — Send a test notification through the SNS Topic.
 
-3. `verify-budget-status.sh` — Check Budget's current status.
+3. `test-lambda.sh` — Invoke Lambda directly with a mock SNS event and verify Slack notification.
 
-4. `verify-notif-config.sh` — Check Budget's notification configuration.
+4. `verify-budget-status.sh` — Check Budget current status.
+
+5. `verify-notif-config.sh` — Check Budget notification configuration.
+
+6. `verify-lambda.sh` — Verify Lambda function configuration.
+
+7. `verify-ssm.sh` — Verify SSM parameter exists.
+
+8. `status.sh` — Check for any active or leftover AWS resources.
 
 ## Cleanup
-Run `cleanup.sh` to delete the Budget and SNS Topic, and remove local state files.
+Run `cleanup.sh` to delete all AWS resources and remove local state files.
