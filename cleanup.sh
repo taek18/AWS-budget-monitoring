@@ -64,8 +64,14 @@ else
 fi
 
 # Delete CloudWatch log group
-aws logs delete-log-group \
-    --log-group-name "/aws/lambda/${LAMBDA_FUNCTION_NAME}"
+LOG_GROUP="/aws/lambda/${LAMBDA_FUNCTION_NAME}"
+if aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query 'logGroups[0].logGroupName' --output text 2>/dev/null | grep -q "$LOG_GROUP"; then
+    aws logs delete-log-group \
+        --log-group-name "$LOG_GROUP"
+    echo "CloudWatch log group deleted: $LOG_GROUP"
+else
+    echo " ! CloudWatch log group not found, skipping"
+fi
 
 # Clean up local files
 rm -f "${PROJECT_ROOT}/config"/*.json "${PROJECT_ROOT}/state"/*.txt "${PROJECT_ROOT}/lambda"/*.zip
